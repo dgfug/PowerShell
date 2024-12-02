@@ -4,24 +4,32 @@ parameters:
 jobs:
 - job: MacPackageSigningJob_${{ parameters.buildArchitecture }}
   displayName: macOS Package signing ${{ parameters.buildArchitecture }}
-  dependsOn: package_macOS_${{ parameters.buildArchitecture }}
   condition: succeeded()
   pool:
     name: PowerShell1ES
     demands:
-    - ImageOverride -equals MMS2019
+    - ImageOverride -equals PSMMS2019-Secure
   variables:
     - group: ESRP
     - name: runCodesignValidationInjection
       value: false
     - name: NugetSecurityAnalysisWarningLevel
       value: none
+    - name: repoFolder
+      value: PowerShell
+    - name: repoRoot
+      value: $(Agent.BuildDirectory)\$(repoFolder)
+    - name: complianceRepoFolder
+      value: compliance
+
   steps:
   - checkout: self
     clean: true
+    path: $(repoFolder)
 
   - checkout: ComplianceRepo
     clean: true
+    path: $(complianceRepoFolder)
 
   - template: shouldSign.yml
 
@@ -105,6 +113,7 @@ jobs:
       storage: '$(StorageAccount)'
       ContainerName: '$(AzureVersion)'
     condition: and(succeeded(), ne(variables['SHOULD_SIGN'], 'true'))
+    retryCountOnTaskFailure: 2
 
   - task: AzureFileCopy@4
     displayName: 'AzureBlob File Copy - signed'
@@ -115,9 +124,12 @@ jobs:
       storage: '$(StorageAccount)'
       ContainerName: '$(AzureVersion)'
     condition: and(succeeded(), eq(variables['SHOULD_SIGN'], 'true'))
+    retryCountOnTaskFailure: 2
 
   - task: ms.vss-governance-buildtask.governance-build-task-component-detection.ComponentGovernanceComponentDetection@0
     displayName: 'Component Detection'
     inputs:
-      sourceScanPath: '$(Build.SourcesDirectory)'
+      sourceScanPath: '$(repoRoot)/tools'
       snapshotForceEnabled: true
+
+  - template: /tools/releaseBuild/azureDevOps/templates/step/finalize.yml

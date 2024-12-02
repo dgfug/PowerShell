@@ -35,7 +35,7 @@ $semVersion = [System.Management.Automation.SemanticVersion] $version
 
 $metadata = Get-Content "$location/tools/metadata.json" -Raw | ConvertFrom-Json
 
-$LTS = $metadata.LTSRelease
+$LTS = $metadata.LTSRelease.Package
 
 Write-Verbose -Verbose -Message "LTS is set to: $LTS"
 
@@ -59,11 +59,10 @@ function BuildPackages {
             $buildParams.Add("Runtime", "fxdependent")
         } elseif ($Alpine.IsPresent) {
             $projectAssetsZipName = 'linuxAlpineProjectAssetssymbols.zip'
-            $buildParams.Add("Runtime", 'alpine-x64')
+            $buildParams.Add("Runtime", 'musl-x64')
         } else {
             # make the artifact name unique
             $projectAssetsZipName = "linuxProjectAssets-$((Get-Date).Ticks)-symbols.zip"
-            $buildParams.Add("Crossgen", $true)
         }
 
         Start-PSBuild @buildParams @releaseTagParam
@@ -89,7 +88,6 @@ function BuildPackages {
             Remove-Item -Path $binDir -Recurse -Force
 
             ## Build 'min-size' and create 'tar.gz' package for it.
-            $buildParams['Crossgen'] = $false
             $buildParams['ForMinimalSize'] = $true
             Start-PSBuild @buildParams @releaseTagParam
             Start-PSPackage -Type min-size @releaseTagParam -LTS:$LTS

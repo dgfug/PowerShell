@@ -145,7 +145,7 @@ namespace Microsoft.PowerShell.Commands
             // The pipeline will be blocked while we don't return
             if (this.Wait || this.OutputMode != OutputModeOption.None)
             {
-                _windowProxy.BlockUntillClosed();
+                _windowProxy.BlockUntilClosed();
             }
 
             // Output selected items to pipeline.
@@ -180,8 +180,7 @@ namespace Microsoft.PowerShell.Commands
                 return;
             }
 
-            IDictionary dictionary = InputObject.BaseObject as IDictionary;
-            if (dictionary != null)
+            if (InputObject.BaseObject is IDictionary dictionary)
             {
                 // Dictionaries should be enumerated through because the pipeline does not enumerate through them.
                 foreach (DictionaryEntry entry in dictionary)

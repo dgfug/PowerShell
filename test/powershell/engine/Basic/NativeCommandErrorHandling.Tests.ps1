@@ -7,13 +7,8 @@
 Describe 'Native command error handling tests' -Tags 'CI' {
     BeforeAll {
         $originalDefaultParameterValues = $PSDefaultParameterValues.Clone()
-        if (-not [ExperimentalFeature]::IsEnabled('PSNativeCommandErrorActionPreference'))
-        {
-            $PSDefaultParameterValues['It:Skip'] = $true
-            return
-        }
-
         $exeName = $IsWindows ? 'testexe.exe' : 'testexe'
+        $exePath = @(Get-Command $exeName -Type Application)[0].Path
 
         $errorActionPrefTestCases = @(
             @{ ErrorActionPref = 'Stop' }
@@ -43,7 +38,7 @@ Describe 'Native command error handling tests' -Tags 'CI' {
 
             $error.Count | Should -Be 1
             $error[0].FullyQualifiedErrorId | Should -BeExactly 'ProgramExitedWithNonZeroCode'
-            $error[0].TargetObject | Should -BeExactly $exeName
+            $error[0].TargetObject | Should -BeExactly $exePath
         }
 
         It 'Non-zero exit code outputs a non-teminating error for $ErrorActionPreference = ''Continue''' {
@@ -52,7 +47,7 @@ Describe 'Native command error handling tests' -Tags 'CI' {
             $stderr = testexe -returncode 1 2>&1
 
             $error[0].FullyQualifiedErrorId | Should -BeExactly 'ProgramExitedWithNonZeroCode'
-            $error[0].TargetObject | Should -BeExactly $exeName
+            $error[0].TargetObject | Should -BeExactly $exePath
             $stderr[1].Exception.Message | Should -BeExactly "Program `"$exeName`" ended with non-zero exit code: 1."
         }
 
@@ -65,7 +60,7 @@ Describe 'Native command error handling tests' -Tags 'CI' {
             $stderr = testexe -returncode 1 2>&1
 
             $error[0].FullyQualifiedErrorId | Should -BeExactly 'ProgramExitedWithNonZeroCode'
-            $error[0].TargetObject | Should -BeExactly $exeName
+            $error[0].TargetObject | Should -BeExactly $exePath
             $stderr[1].Exception.Message | Should -BeExactly "Program `"$exeName`" ended with non-zero exit code: 1."
         }
 
@@ -76,7 +71,7 @@ Describe 'Native command error handling tests' -Tags 'CI' {
 
             $error.Count | Should -Be 1
             $error[0].FullyQualifiedErrorId | Should -BeExactly 'ProgramExitedWithNonZeroCode'
-            $error[0].TargetObject | Should -BeExactly $exeName
+            $error[0].TargetObject | Should -BeExactly $exePath
         }
 
         It 'Non-zero exit code does not generates an error record for $ErrorActionPreference = ''Ignore''' {

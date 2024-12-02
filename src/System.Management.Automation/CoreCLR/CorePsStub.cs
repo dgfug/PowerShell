@@ -436,6 +436,23 @@ namespace System.Management.Automation.Security
         private SystemPolicy() { }
 
         /// <summary>
+        /// Writes to PowerShell WDAC Audit mode ETW log.
+        /// </summary>
+        /// <param name="context">Current execution context.</param>
+        /// <param name="title">Audit message title.</param>
+        /// <param name="message">Audit message message.</param>
+        /// <param name="fqid">Fully Qualified ID.</param>
+        /// <param name="dropIntoDebugger">Stops code execution and goes into debugger mode.</param>
+        internal static void LogWDACAuditMessage(
+            ExecutionContext context,
+            string title,
+            string message,
+            string fqid,
+            bool dropIntoDebugger = false)
+        {
+        }
+
+        /// <summary>
         /// Gets the system lockdown policy.
         /// </summary>
         /// <remarks>Always return SystemEnforcementMode.None in CSS (trusted)</remarks>
@@ -457,6 +474,20 @@ namespace System.Management.Automation.Security
         {
             throw new NotImplementedException("SystemPolicy.IsClassInApprovedList not implemented");
         }
+
+        /// <summary>
+        /// Gets the system wide script file policy enforcement for an open file.
+        /// Based on system WDAC (Windows Defender Application Control) or AppLocker policies.
+        /// </summary>
+        /// <param name="filePath">Script file path for policy check.</param>
+        /// <param name="fileStream">FileStream object to script file path.</param>
+        /// <returns>Policy check result for script file.</returns>
+        public static SystemScriptFileEnforcement GetFilePolicyEnforcement(
+            string filePath,
+            System.IO.FileStream fileStream)
+        {
+            return SystemScriptFileEnforcement.None;
+        }
     }
 
     /// <summary>
@@ -472,6 +503,37 @@ namespace System.Management.Automation.Security
 
         /// Enabled, enforce restrictions
         Enforce = 2
+    }
+
+    /// <summary>
+    /// System wide policy enforcement for a specific script file.
+    /// </summary>
+    public enum SystemScriptFileEnforcement
+    {
+        /// <summary>
+        /// No policy enforcement.
+        /// </summary>
+        None = 0,
+
+        /// <summary>
+        /// Script file is blocked from running.
+        /// </summary>
+        Block = 1,
+
+        /// <summary>
+        /// Script file is allowed to run without restrictions (FullLanguage mode).
+        /// </summary>
+        Allow = 2,
+
+        /// <summary>
+        /// Script file is allowed to run in ConstrainedLanguage mode only.
+        /// </summary>
+        AllowConstrained = 3,
+
+        /// <summary>
+        /// Script file is allowed to run in FullLanguage mode but will emit ConstrainedLanguage restriction audit logs.
+        /// </summary>
+        AllowConstrainedAudit = 4
     }
 }
 

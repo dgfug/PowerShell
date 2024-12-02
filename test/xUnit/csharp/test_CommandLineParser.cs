@@ -24,6 +24,7 @@ namespace PSTests.Parallel
             Assert.False(cpp.AbortStartup);
             Assert.Empty(cpp.Args);
             Assert.Null(cpp.ConfigurationName);
+            Assert.Null(cpp.ConfigurationFile);
             Assert.Null(cpp.CustomPipeName);
             Assert.Null(cpp.ErrorMessage);
             Assert.Null(cpp.ExecutionPolicy);
@@ -330,7 +331,7 @@ namespace PSTests.Parallel
             Assert.False(cpp.AbortStartup);
             Assert.True(cpp.NoExit);
             Assert.False(cpp.ShowShortHelp);
-            Assert.True(cpp.ShowBanner);
+            Assert.False(cpp.ShowBanner);
             Assert.True(cpp.SocketServerMode);
             Assert.Null(cpp.ErrorMessage);
         }
@@ -347,7 +348,7 @@ namespace PSTests.Parallel
             Assert.False(cpp.AbortStartup);
             Assert.True(cpp.NoExit);
             Assert.False(cpp.ShowShortHelp);
-            Assert.True(cpp.ShowBanner);
+            Assert.False(cpp.ShowBanner);
             Assert.True(cpp.ServerMode);
             Assert.Null(cpp.ErrorMessage);
         }
@@ -364,7 +365,7 @@ namespace PSTests.Parallel
             Assert.False(cpp.AbortStartup);
             Assert.True(cpp.NoExit);
             Assert.False(cpp.ShowShortHelp);
-            Assert.True(cpp.ShowBanner);
+            Assert.False(cpp.ShowBanner);
             Assert.True(cpp.NamedPipeServerMode);
             Assert.Null(cpp.ErrorMessage);
         }
@@ -381,7 +382,7 @@ namespace PSTests.Parallel
             Assert.False(cpp.AbortStartup);
             Assert.True(cpp.NoExit);
             Assert.False(cpp.ShowShortHelp);
-            Assert.True(cpp.ShowBanner);
+            Assert.False(cpp.ShowBanner);
             Assert.True(cpp.SSHServerMode);
             Assert.Null(cpp.ErrorMessage);
         }
@@ -434,6 +435,38 @@ namespace PSTests.Parallel
             Assert.False(cpp.ShowShortHelp);
             Assert.True(cpp.ShowBanner);
             Assert.Equal("qwerty", cpp.ConfigurationName);
+            Assert.Null(cpp.ErrorMessage);
+        }
+
+        [Theory]
+        [InlineData("-configurationfile")]
+        public static void TestParameter_ConfigurationFile_No_Name(params string[] commandLine)
+        {
+            var cpp = new CommandLineParameterParser();
+
+            cpp.Parse(commandLine);
+
+            Assert.True(cpp.AbortStartup);
+            Assert.True(cpp.NoExit);
+            Assert.False(cpp.ShowShortHelp);
+            Assert.False(cpp.ShowBanner);
+            Assert.Equal((uint)ConsoleHost.ExitCodeBadCommandLineParameter, cpp.ExitCode);
+            Assert.Equal(CommandLineParameterParserStrings.MissingConfigurationFileArgument, cpp.ErrorMessage);
+        }
+
+        [Theory]
+        [InlineData("-configurationfile", "qwerty")]
+        public static void TestParameter_ConfigurationFile_With_Name(params string[] commandLine)
+        {
+            var cpp = new CommandLineParameterParser();
+
+            cpp.Parse(commandLine);
+
+            Assert.False(cpp.AbortStartup);
+            Assert.True(cpp.NoExit);
+            Assert.False(cpp.ShowShortHelp);
+            Assert.True(cpp.ShowBanner);
+            Assert.Equal("qwerty", cpp.ConfigurationFile);
             Assert.Null(cpp.ErrorMessage);
         }
 
@@ -823,22 +856,24 @@ namespace PSTests.Parallel
         }
 
         [Theory]
-        [InlineData("-executionpolicy", "XML")]
-        [InlineData("-ex", "XML")]
-        [InlineData("-ep", "XML")]
-        public static void TestParameter_ExecutionPolicy_With_Right_Value(params string[] commandLine)
+        [InlineData("-executionpolicy", "InvalidPolicy")]
+        [InlineData("-ex", "InvalidPolicy")]
+        [InlineData("-ep", "InvalidPolicy")]
+        public static void TestParameter_ExecutionPolicy_With_Wrong_Value(params string[] commandLine)
         {
             var cpp = new CommandLineParameterParser();
 
             cpp.Parse(commandLine);
 
-            Assert.False(cpp.AbortStartup);
+            Assert.True(cpp.AbortStartup);
             Assert.True(cpp.NoExit);
-            Assert.False(cpp.ShowShortHelp);
-            Assert.True(cpp.ShowBanner);
-            Assert.Equal((uint)ConsoleHost.ExitCodeSuccess, cpp.ExitCode);
+            Assert.True(cpp.ShowShortHelp);
+            Assert.False(cpp.ShowBanner);
+            Assert.Equal((uint)ConsoleHost.ExitCodeBadCommandLineParameter, cpp.ExitCode);
             Assert.Equal(commandLine[1], cpp.ExecutionPolicy);
-            Assert.Null(cpp.ErrorMessage);
+            Assert.Equal(
+                string.Format(CommandLineParameterParserStrings.InvalidExecutionPolicyArgument, "InvalidPolicy"),
+                cpp.ErrorMessage);
         }
 
         [Theory]

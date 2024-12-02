@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel; // Win32Exception
 using System.Diagnostics;
@@ -17,6 +18,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
+using System.Text;
 using System.Threading;
 
 using Microsoft.Win32.SafeHandles;
@@ -166,10 +168,7 @@ namespace System.Management.Automation.Runspaces
 
             set
             {
-                if (value == null)
-                {
-                    throw new ArgumentNullException("value");
-                }
+                ArgumentNullException.ThrowIfNull(value);
 
                 _culture = value;
             }
@@ -189,10 +188,7 @@ namespace System.Management.Automation.Runspaces
 
             set
             {
-                if (value == null)
-                {
-                    throw new ArgumentNullException("value");
-                }
+                ArgumentNullException.ThrowIfNull(value);
 
                 _uiCulture = value;
             }
@@ -282,10 +278,7 @@ namespace System.Management.Automation.Runspaces
         /// <param name="options"></param>
         public virtual void SetSessionOptions(PSSessionOption options)
         {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+            ArgumentNullException.ThrowIfNull(options);
 
             if (options.Culture != null)
             {
@@ -326,29 +319,6 @@ namespace System.Management.Automation.Runspaces
         }
 
         /// <summary>
-        /// Creates the appropriate client session transportmanager.
-        /// </summary>
-        /// <param name="instanceId">Runspace/Pool instance Id.</param>
-        /// <param name="sessionName">Session name.</param>
-        /// <param name="cryptoHelper">PSRemotingCryptoHelper.</param>
-        internal virtual BaseClientSessionTransportManager CreateClientSessionTransportManager(
-            Guid instanceId,
-            string sessionName,
-            PSRemotingCryptoHelper cryptoHelper)
-        {
-            throw new PSNotImplementedException();
-        }
-
-        /// <summary>
-        /// Create a copy of the connection info object.
-        /// </summary>
-        /// <returns>Copy of the connection info object.</returns>
-        internal virtual RunspaceConnectionInfo InternalCopy()
-        {
-            throw new PSNotImplementedException();
-        }
-
-        /// <summary>
         /// Validates port number is in range.
         /// </summary>
         /// <param name="port">Port number to validate.</param>
@@ -362,6 +332,33 @@ namespace System.Management.Automation.Runspaces
                 ArgumentException e = new ArgumentException(message);
                 throw e;
             }
+        }
+
+        #endregion
+
+        #region Public methods
+
+        /// <summary>
+        /// Creates the appropriate client session transportmanager.
+        /// </summary>
+        /// <param name="instanceId">Runspace/Pool instance Id.</param>
+        /// <param name="sessionName">Session name.</param>
+        /// <param name="cryptoHelper">PSRemotingCryptoHelper.</param>
+        public virtual BaseClientSessionTransportManager CreateClientSessionTransportManager(
+            Guid instanceId,
+            string sessionName,
+            PSRemotingCryptoHelper cryptoHelper)
+        {
+            throw new PSNotImplementedException();
+        }
+
+        /// <summary>
+        /// Create a copy of the connection info object.
+        /// </summary>
+        /// <returns>Copy of the connection info object.</returns>
+        public virtual RunspaceConnectionInfo Clone()
+        {
+            throw new PSNotImplementedException();
         }
 
         #endregion
@@ -1023,10 +1020,7 @@ namespace System.Management.Automation.Runspaces
         /// </exception>
         public override void SetSessionOptions(PSSessionOption options)
         {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+            ArgumentNullException.ThrowIfNull(options);
 
             if ((options.ProxyAccessType == ProxyAccessType.None) && (options.ProxyCredential != null))
             {
@@ -1062,10 +1056,10 @@ namespace System.Management.Automation.Runspaces
         }
 
         /// <summary>
-        /// Shallow copy of the current instance.
+        /// Create a copy of the connection info object.
         /// </summary>
-        /// <returns>RunspaceConnectionInfo.</returns>
-        internal override RunspaceConnectionInfo InternalCopy()
+        /// <returns>Copy of the connection info object.</returns>
+        public override RunspaceConnectionInfo Clone()
         {
             return Copy();
         }
@@ -1133,7 +1127,14 @@ namespace System.Management.Automation.Runspaces
 
         #region Internal Methods
 
-        internal override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
+        /// <summary>
+        /// Creates the appropriate client session transportmanager.
+        /// </summary>
+        /// <param name="instanceId">Runspace/Pool instance Id.</param>
+        /// <param name="sessionName">Session name.</param>
+        /// <param name="cryptoHelper">PSRemotingCryptoHelper instance.</param>
+        /// <returns>Instance of WSManClientSessionTransportManager</returns>
+        public override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
         {
             return new WSManClientSessionTransportManager(
                 instanceId,
@@ -1374,7 +1375,7 @@ namespace System.Management.Automation.Runspaces
         private string _appName = s_defaultAppName;
         private Uri _connectionUri = new Uri(LocalHostUriString);          // uri of this connection
         private PSCredential _credential;    // credentials to be used for this connection
-        private string _shellUri = DefaultShellUri;            // shell thats specified by the user
+        private string _shellUri = DefaultShellUri;            // shell that's specified by the user
         private string _thumbPrint;
         private AuthenticationMechanism _proxyAuthentication;
         private PSCredential _proxyCredential;
@@ -1653,12 +1654,23 @@ namespace System.Management.Automation.Runspaces
             return result;
         }
 
-        internal override RunspaceConnectionInfo InternalCopy()
+        /// <summary>
+        /// Create a copy of the connection info object.
+        /// </summary>
+        /// <returns>Copy of the connection info object.</returns>
+        public override RunspaceConnectionInfo Clone()
         {
             return Copy();
         }
 
-        internal override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
+        /// <summary>
+        /// Creates the appropriate client session transportmanager.
+        /// </summary>
+        /// <param name="instanceId">Runspace/Pool instance Id.</param>
+        /// <param name="sessionName">Session name.</param>
+        /// <param name="cryptoHelper">PSRemotingCryptoHelper object.</param>
+        /// <returns>Instance of OutOfProcessClientSessionTransportManager</returns>
+        public override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
         {
             return new OutOfProcessClientSessionTransportManager(
                 instanceId,
@@ -1873,10 +1885,10 @@ namespace System.Management.Automation.Runspaces
         }
 
         /// <summary>
-        /// Shallow copy of current instance.
+        /// Create a copy of the connection info object.
         /// </summary>
-        /// <returns>NamedPipeConnectionInfo.</returns>
-        internal override RunspaceConnectionInfo InternalCopy()
+        /// <returns>Copy of the connection info object.</returns>
+        public override RunspaceConnectionInfo Clone()
         {
             NamedPipeConnectionInfo newCopy = new NamedPipeConnectionInfo();
             newCopy._authMechanism = this.AuthenticationMechanism;
@@ -1889,7 +1901,14 @@ namespace System.Management.Automation.Runspaces
             return newCopy;
         }
 
-        internal override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
+        /// <summary>
+        /// Creates the appropriate client session transportmanager.
+        /// </summary>
+        /// <param name="instanceId">Runspace/Pool instance Id.</param>
+        /// <param name="sessionName">Session name.</param>
+        /// <param name="cryptoHelper">PSRemotingCryptoHelper object.</param>
+        /// <returns>Instance of NamedPipeClientSessionTransportManager</returns>
+        public override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
         {
             return new NamedPipeClientSessionTransportManager(
                 this,
@@ -1913,7 +1932,7 @@ namespace System.Management.Automation.Runspaces
         /// Default value for subsystem.
         /// </summary>
         private const string DefaultSubsystem = "powershell";
-        
+
         /// <summary>
         /// Default value is infinite timeout.
         /// </summary>
@@ -1935,7 +1954,7 @@ namespace System.Management.Automation.Runspaces
         /// <summary>
         /// Key File Path.
         /// </summary>
-        private string KeyFilePath
+        public string KeyFilePath
         {
             get;
             set;
@@ -1944,7 +1963,7 @@ namespace System.Management.Automation.Runspaces
         /// <summary>
         /// Port for connection.
         /// </summary>
-        private int Port
+        public int Port
         {
             get;
             set;
@@ -1953,7 +1972,7 @@ namespace System.Management.Automation.Runspaces
         /// <summary>
         /// Subsystem to use.
         /// </summary>
-        private string Subsystem
+        public string Subsystem
         {
             get;
             set;
@@ -1969,18 +1988,28 @@ namespace System.Management.Automation.Runspaces
             set;
         }
 
+        /// <summary>
+        /// The SSH options to pass to OpenSSH.
+        /// Gets or sets the SSH options to pass to OpenSSH.
+        /// </summary>
+        private Hashtable Options
+        {
+            get;
+            set;
+        }
+
         #endregion
 
         #region Constructors
 
         /// <summary>
-        /// Constructor.
+        /// Initializes a new instance of the <see cref="SSHConnectionInfo" /> class.
         /// </summary>
         private SSHConnectionInfo()
         { }
 
         /// <summary>
-        /// Constructor.
+        /// Initializes a new instance of the <see cref="SSHConnectionInfo" /> class.
         /// </summary>
         /// <param name="userName">User Name.</param>
         /// <param name="computerName">Computer Name.</param>
@@ -1990,7 +2019,10 @@ namespace System.Management.Automation.Runspaces
             string computerName,
             string keyFilePath)
         {
-            if (computerName == null) { throw new PSArgumentNullException(nameof(computerName)); }
+            if (computerName == null)
+            {
+                throw new PSArgumentNullException(nameof(computerName));
+            }
 
             UserName = userName;
             ComputerName = computerName;
@@ -2001,7 +2033,7 @@ namespace System.Management.Automation.Runspaces
         }
 
         /// <summary>
-        /// Constructor.
+        /// Initializes a new instance of the <see cref="SSHConnectionInfo" /> class.
         /// </summary>
         /// <param name="userName">User Name.</param>
         /// <param name="computerName">Computer Name.</param>
@@ -2018,7 +2050,7 @@ namespace System.Management.Automation.Runspaces
         }
 
         /// <summary>
-        /// Constructor.
+        /// Initializes a new instance of the <see cref="SSHConnectionInfo" /> class.
         /// </summary>
         /// <param name="userName">User Name.</param>
         /// <param name="computerName">Computer Name.</param>
@@ -2053,6 +2085,28 @@ namespace System.Management.Automation.Runspaces
             int connectingTimeout) : this(userName, computerName, keyFilePath, port, subsystem)
         {
             ConnectingTimeout = connectingTimeout;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SSHConnectionInfo" /> class.
+        /// </summary>
+        /// <param name="userName">User Name.</param>
+        /// <param name="computerName">Computer Name.</param>
+        /// <param name="keyFilePath">Key File Path.</param>
+        /// <param name="port">Port number for connection (default 22).</param>
+        /// <param name="subsystem">Subsystem to use (default 'powershell').</param>
+        /// <param name="connectingTimeout">Timeout time for terminating connection attempt.</param>
+        /// <param name="options">Options for the SSH connection.</param>
+        public SSHConnectionInfo(
+            string userName,
+            string computerName,
+            string keyFilePath,
+            int port,
+            string subsystem,
+            int connectingTimeout,
+            Hashtable options) : this(userName, computerName, keyFilePath, port, subsystem, connectingTimeout)
+        {
+           Options = options;
         }
 
         #endregion
@@ -2099,10 +2153,10 @@ namespace System.Management.Automation.Runspaces
         }
 
         /// <summary>
-        /// Shallow copy of current instance.
+        /// Create a copy of the connection info object.
         /// </summary>
-        /// <returns>NamedPipeConnectionInfo.</returns>
-        internal override RunspaceConnectionInfo InternalCopy()
+        /// <returns>Copy of the connection info object.</returns>
+        public override RunspaceConnectionInfo Clone()
         {
             SSHConnectionInfo newCopy = new SSHConnectionInfo();
             newCopy.ComputerName = ComputerName;
@@ -2111,18 +2165,18 @@ namespace System.Management.Automation.Runspaces
             newCopy.Port = Port;
             newCopy.Subsystem = Subsystem;
             newCopy.ConnectingTimeout = ConnectingTimeout;
+            newCopy.Options = Options;
 
             return newCopy;
         }
 
         /// <summary>
-        /// CreateClientSessionTransportManager.
+        /// Creates the appropriate client session transportmanager.
         /// </summary>
-        /// <param name="instanceId"></param>
-        /// <param name="sessionName"></param>
-        /// <param name="cryptoHelper"></param>
-        /// <returns></returns>
-        internal override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
+        /// <param name="instanceId">Runspace/Pool instance Id.</param>
+        /// <param name="sessionName">Session name.</param>
+        /// <param name="cryptoHelper">PSRemotingCryptoHelper.</param>
+        public override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
         {
             return new SSHClientSessionTransportManager(
                 this,
@@ -2163,9 +2217,9 @@ namespace System.Management.Automation.Runspaces
             //
             // Local ssh invoked as:
             //   windows:
-            //     ssh.exe [-i identity_file] [-l login_name] [-p port] -s <destination> <command>
+            //     ssh.exe [-i identity_file] [-l login_name] [-p port] [-o option] -s <destination> <command>
             //   linux|macos:
-            //     ssh [-i identity_file] [-l login_name] [-p port] -s <destination> <command>
+            //     ssh [-i identity_file] [-l login_name] [-p port] [-o option] -s <destination> <command>
             // where <command> is interpreted as the subsystem due to the -s flag.
             //
             // Remote sshd configured for PowerShell Remoting Protocol (PSRP) over Secure Shell Protocol (SSH)
@@ -2188,24 +2242,24 @@ namespace System.Management.Automation.Runspaces
                         StringUtil.Format(RemotingErrorIdStrings.KeyFileNotFound, this.KeyFilePath));
                 }
 
-                startInfo.ArgumentList.Add(string.Format(CultureInfo.InvariantCulture, @"-i ""{0}""", this.KeyFilePath));
+                startInfo.ArgumentList.Add(string.Create(CultureInfo.InvariantCulture, $@"-i ""{this.KeyFilePath}"""));
             }
 
             // pass "-l login_name" command line argument to ssh if UserName is set
             // if UserName is not set, then ssh will use User from ssh_config if defined else the environment user by default
             if (!string.IsNullOrEmpty(this.UserName))
             {
-                var parts = this.UserName.Split(Utils.Separators.Backslash);
+                var parts = this.UserName.Split('\\');
                 if (parts.Length == 2)
                 {
                     // convert DOMAIN\user to user@DOMAIN
                     var domainName = parts[0];
                     var userName = parts[1];
-                    startInfo.ArgumentList.Add(string.Format(CultureInfo.InvariantCulture, @"-l {0}@{1}", userName, domainName));
+                    startInfo.ArgumentList.Add(string.Create(CultureInfo.InvariantCulture, $@"-l {userName}@{domainName}"));
                 }
                 else
                 {
-                    startInfo.ArgumentList.Add(string.Format(CultureInfo.InvariantCulture, @"-l {0}", this.UserName));
+                    startInfo.ArgumentList.Add(string.Create(CultureInfo.InvariantCulture, $@"-l {this.UserName}"));
                 }
             }
 
@@ -2213,12 +2267,21 @@ namespace System.Management.Automation.Runspaces
             // if Port is not set, then ssh will use Port from ssh_config if defined else 22 by default
             if (this.Port != 0)
             {
-                startInfo.ArgumentList.Add(string.Format(CultureInfo.InvariantCulture, @"-p {0}", this.Port));
+                startInfo.ArgumentList.Add(string.Create(CultureInfo.InvariantCulture, $@"-p {this.Port}"));
+            }
+
+            // pass "-o option=value" command line argument to ssh if options are provided
+            if (this.Options != null)
+            {
+                foreach (DictionaryEntry pair in this.Options)
+                {
+                    startInfo.ArgumentList.Add(string.Create(CultureInfo.InvariantCulture, $@"-o {pair.Key}={pair.Value}"));
+                }
             }
 
             // pass "-s destination command" command line arguments to ssh where command is the subsystem to invoke on the destination
             // note that ssh expects IPv6 addresses to not be enclosed in square brackets so trim them if present
-            startInfo.ArgumentList.Add(string.Format(CultureInfo.InvariantCulture, @"-s {0} {1}", this.ComputerName.TrimStart('[').TrimEnd(']'), this.Subsystem));
+            startInfo.ArgumentList.Add(string.Create(CultureInfo.InvariantCulture, $@"-s {this.ComputerName.TrimStart('[').TrimEnd(']')} {this.Subsystem}"));
 
             startInfo.WorkingDirectory = System.IO.Path.GetDirectoryName(filePath);
             startInfo.CreateNoWindow = true;
@@ -2227,6 +2290,10 @@ namespace System.Management.Automation.Runspaces
             return StartSSHProcessImpl(startInfo, out stdInWriterVar, out stdOutReaderVar, out stdErrReaderVar);
         }
 
+        /// <summary>
+        /// Terminates the SSH process by process Id.
+        /// </summary>
+        /// <param name="pid">Process id.</param>
         internal void KillSSHProcess(int pid)
         {
             KillSSHProcessImpl(pid);
@@ -2330,23 +2397,31 @@ namespace System.Management.Automation.Runspaces
             if (startInfo.RedirectStandardInput)
             {
                 Debug.Assert(stdinFd >= 0, "Invalid Fd");
-                standardInput = new StreamWriter(OpenStream(stdinFd, FileAccess.Write),
-                    Utils.utf8NoBom, StreamBufferSize)
+                standardInput = new StreamWriter(
+                    OpenStream(stdinFd, FileAccess.Write),
+                    Encoding.Default,
+                    StreamBufferSize)
                 { AutoFlush = true };
             }
 
             if (startInfo.RedirectStandardOutput)
             {
                 Debug.Assert(stdoutFd >= 0, "Invalid Fd");
-                standardOutput = new StreamReader(OpenStream(stdoutFd, FileAccess.Read),
-                    startInfo.StandardOutputEncoding ?? Utils.utf8NoBom, true, StreamBufferSize);
+                standardOutput = new StreamReader(
+                    OpenStream(stdoutFd, FileAccess.Read),
+                    startInfo.StandardOutputEncoding ?? Encoding.Default,
+                    detectEncodingFromByteOrderMarks: true,
+                    StreamBufferSize);
             }
 
             if (startInfo.RedirectStandardError)
             {
                 Debug.Assert(stderrFd >= 0, "Invalid Fd");
-                standardError = new StreamReader(OpenStream(stderrFd, FileAccess.Read),
-                    startInfo.StandardErrorEncoding ?? Utils.utf8NoBom, true, StreamBufferSize);
+                standardError = new StreamReader(
+                    OpenStream(stderrFd, FileAccess.Read),
+                    startInfo.StandardErrorEncoding ?? Encoding.Default,
+                    detectEncodingFromByteOrderMarks: true,
+                    StreamBufferSize);
             }
 
             return childPid;
@@ -2387,7 +2462,7 @@ namespace System.Management.Automation.Runspaces
             var argvList = new List<string>();
             argvList.Add(psi.FileName);
 
-            var argsToParse = String.Join(" ", psi.ArgumentList).Trim();
+            var argsToParse = String.Join(' ', psi.ArgumentList).Trim();
             var argsLength = argsToParse.Length;
             for (int i = 0; i < argsLength; )
             {
@@ -2615,9 +2690,9 @@ namespace System.Management.Automation.Runspaces
             stdInPipeServer = null;
             stdOutPipeServer = null;
             stdErrPipeServer = null;
-            SafePipeHandle stdInPipeClient = null;
-            SafePipeHandle stdOutPipeClient = null;
-            SafePipeHandle stdErrPipeClient = null;
+            SafeFileHandle stdInPipeClient = null;
+            SafeFileHandle stdOutPipeClient = null;
+            SafeFileHandle stdErrPipeClient = null;
             string randomName = System.IO.Path.GetFileNameWithoutExtension(System.IO.Path.GetRandomFileName());
 
             try
@@ -2639,17 +2714,12 @@ namespace System.Management.Automation.Runspaces
             }
             catch (Exception)
             {
-                if (stdInPipeServer != null) { stdInPipeServer.Dispose(); }
-
-                if (stdInPipeClient != null) { stdInPipeClient.Dispose(); }
-
-                if (stdOutPipeServer != null) { stdOutPipeServer.Dispose(); }
-
-                if (stdOutPipeClient != null) { stdOutPipeClient.Dispose(); }
-
-                if (stdErrPipeServer != null) { stdErrPipeServer.Dispose(); }
-
-                if (stdErrPipeClient != null) { stdErrPipeClient.Dispose(); }
+                stdInPipeServer?.Dispose();
+                stdInPipeClient?.Dispose();
+                stdOutPipeServer?.Dispose();
+                stdOutPipeClient?.Dispose();
+                stdErrPipeServer?.Dispose();
+                stdErrPipeClient?.Dispose();
 
                 throw;
             }
@@ -2668,9 +2738,9 @@ namespace System.Management.Automation.Runspaces
                     startInfo.FileName,
                     string.Join(' ', startInfo.ArgumentList));
 
-                lpStartupInfo.hStdInput = new SafeFileHandle(stdInPipeClient.DangerousGetHandle(), false);
-                lpStartupInfo.hStdOutput = new SafeFileHandle(stdOutPipeClient.DangerousGetHandle(), false);
-                lpStartupInfo.hStdError = new SafeFileHandle(stdErrPipeClient.DangerousGetHandle(), false);
+                lpStartupInfo.hStdInput = stdInPipeClient;
+                lpStartupInfo.hStdOutput = stdOutPipeClient;
+                lpStartupInfo.hStdError = stdErrPipeClient;
                 lpStartupInfo.dwFlags = 0x100;
 
                 // No new window: Inherit the parent process's console window
@@ -2715,17 +2785,12 @@ namespace System.Management.Automation.Runspaces
             }
             catch (Exception)
             {
-                if (stdInPipeServer != null) { stdInPipeServer.Dispose(); }
-
-                if (stdInPipeClient != null) { stdInPipeClient.Dispose(); }
-
-                if (stdOutPipeServer != null) { stdOutPipeServer.Dispose(); }
-
-                if (stdOutPipeClient != null) { stdOutPipeClient.Dispose(); }
-
-                if (stdErrPipeServer != null) { stdErrPipeServer.Dispose(); }
-
-                if (stdErrPipeClient != null) { stdErrPipeClient.Dispose(); }
+                stdInPipeServer?.Dispose();
+                stdInPipeClient?.Dispose();
+                stdOutPipeServer?.Dispose();
+                stdOutPipeClient?.Dispose();
+                stdErrPipeServer?.Dispose();
+                stdErrPipeClient?.Dispose();
 
                 throw;
             }
@@ -2735,25 +2800,10 @@ namespace System.Management.Automation.Runspaces
             }
         }
 
-        private static SafePipeHandle GetNamedPipeHandle(string pipeName)
+        private static SafeFileHandle GetNamedPipeHandle(string pipeName)
         {
-            // Get handle to pipe.
-            var fileHandle = PlatformInvokes.CreateFileW(
-                lpFileName: pipeName,
-                dwDesiredAccess: NamedPipeNative.GENERIC_READ | NamedPipeNative.GENERIC_WRITE,
-                dwShareMode: 0,
-                lpSecurityAttributes: new PlatformInvokes.SECURITY_ATTRIBUTES(), // Create an inheritable handle.
-                dwCreationDisposition: NamedPipeNative.OPEN_EXISTING,
-                dwFlagsAndAttributes: NamedPipeNative.FILE_FLAG_OVERLAPPED, // Open in asynchronous mode.
-                hTemplateFile: IntPtr.Zero);
-
-            int lastError = Marshal.GetLastWin32Error();
-            if (fileHandle == PlatformInvokes.INVALID_HANDLE_VALUE)
-            {
-                throw new System.ComponentModel.Win32Exception(lastError);
-            }
-
-            return new SafePipeHandle(fileHandle, true);
+            SafeFileHandle sf = File.OpenHandle(pipeName, FileMode.Open, FileAccess.ReadWrite, FileShare.Inheritable, FileOptions.Asynchronous);
+            return sf;
         }
 
         private static SafePipeHandle CreateNamedPipe(
@@ -2783,10 +2833,7 @@ namespace System.Management.Automation.Runspaces
                 securityAttributes);
 
             int lastError = Marshal.GetLastWin32Error();
-            if (securityDescHandle != null)
-            {
-                securityDescHandle.Value.Free();
-            }
+            securityDescHandle?.Free();
 
             if (pipeHandle.IsInvalid)
             {
@@ -2890,13 +2937,24 @@ namespace System.Management.Automation.Runspaces
         /// </summary>
         public override string ComputerName { get; set; }
 
-        internal override RunspaceConnectionInfo InternalCopy()
+        /// <summary>
+        /// Create a copy of the connection info object.
+        /// </summary>
+        /// <returns>Copy of the connection info object.</returns>
+        public override RunspaceConnectionInfo Clone()
         {
             VMConnectionInfo result = new VMConnectionInfo(Credential, VMGuid, ComputerName, ConfigurationName);
             return result;
         }
 
-        internal override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
+        /// <summary>
+        /// Creates the appropriate client session transportmanager.
+        /// </summary>
+        /// <param name="instanceId">Runspace/Pool instance Id.</param>
+        /// <param name="sessionName">Session name.</param>
+        /// <param name="cryptoHelper">PSRemotingCryptoHelper instance.</param>
+        /// <returns>Instance of VMHyperVSocketClientSessionTransportManager.</returns>
+        public override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
         {
             return new VMHyperVSocketClientSessionTransportManager(
                 this,
@@ -3023,13 +3081,24 @@ namespace System.Management.Automation.Runspaces
             set { throw new PSNotSupportedException(); }
         }
 
-        internal override RunspaceConnectionInfo InternalCopy()
+        /// <summary>
+        /// Create a copy of the connection info object.
+        /// </summary>
+        /// <returns>Copy of the connection info object.</returns>
+        public override RunspaceConnectionInfo Clone()
         {
             ContainerConnectionInfo newCopy = new ContainerConnectionInfo(ContainerProc);
             return newCopy;
         }
 
-        internal override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
+        /// <summary>
+        /// Creates the appropriate client session transportmanager.
+        /// </summary>
+        /// <param name="instanceId">Runspace/Pool instance Id.</param>
+        /// <param name="sessionName">Session name.</param>
+        /// <param name="cryptoHelper">PSRemotingCryptoHelper object.</param>
+        /// <returns>Instance of ContainerHyperVSocketClientSessionTransportManager</returns>
+        public override BaseClientSessionTransportManager CreateClientSessionTransportManager(Guid instanceId, string sessionName, PSRemotingCryptoHelper cryptoHelper)
         {
             if (ContainerProc.RuntimeId != Guid.Empty)
             {

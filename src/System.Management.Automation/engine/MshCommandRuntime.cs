@@ -876,7 +876,7 @@ namespace System.Management.Automation
         /// pipeline execution log.
         ///
         /// If LogPipelineExecutionDetail is turned on, this information will be written
-        /// to monad log under log category "Pipeline execution detail"
+        /// to PowerShell log under log category "Pipeline execution detail"
         /// </remarks>
         /// <seealso cref="System.Management.Automation.ICommandRuntime.WriteDebug(string)"/>
         /// <seealso cref="System.Management.Automation.ICommandRuntime.WriteVerbose(string)"/>
@@ -928,7 +928,8 @@ namespace System.Management.Automation
         /// </summary>
         internal string PipelineVariable { get; set; }
 
-        private PSVariable _pipelineVarReference = null;
+        private PSVariable _pipelineVarReference;
+        private bool _shouldRemovePipelineVariable;
 
         internal void SetupOutVariable()
         {
@@ -941,13 +942,10 @@ namespace System.Management.Automation
 
             // Handle the creation of OutVariable in the case of Out-Default specially,
             // as it needs to handle much of its OutVariable support itself.
-            if (
-                (!string.IsNullOrEmpty(this.OutVariable)) &&
-                (!(this.OutVariable.StartsWith('+'))) &&
-                string.Equals("Out-Default", _thisCommand.CommandInfo.Name, StringComparison.OrdinalIgnoreCase))
+            if (!OutVariable.StartsWith('+') &&
+                string.Equals("Out-Default", _commandInfo.Name, StringComparison.OrdinalIgnoreCase))
             {
-                if (_state == null)
-                    _state = new SessionState(Context.EngineSessionState);
+                _state ??= new SessionState(Context.EngineSessionState);
 
                 IList oldValue = null;
                 oldValue = PSObject.Base(_state.PSVariable.GetValue(this.OutVariable)) as IList;
@@ -972,27 +970,47 @@ namespace System.Management.Automation
             // This can't use the common SetupVariable implementation, as this needs to persist for an entire
             // pipeline.
 
-            if (string.IsNullOrEmpty(this.PipelineVariable))
+            if (string.IsNullOrEmpty(PipelineVariable))
             {
                 return;
             }
 
             EnsureVariableParameterAllowed();
 
-            if (_state == null)
-                _state = new SessionState(Context.EngineSessionState);
+            _state ??= new SessionState(Context.EngineSessionState);
 
             // Create the pipeline variable
-            _pipelineVarReference = new PSVariable(this.PipelineVariable);
-            _state.PSVariable.Set(_pipelineVarReference);
+            _pipelineVarReference = new PSVariable(PipelineVariable);
+            object varToUse = _state.Internal.SetVariable(
+                _pipelineVarReference,
+                force: false,
+                CommandOrigin.Internal);
 
-            // Get the reference again in case we re-used one from the
-            // same scope.
-            _pipelineVarReference = _state.PSVariable.Get(this.PipelineVariable);
+            if (ReferenceEquals(_pipelineVarReference, varToUse))
+            {
+                // The returned variable is the exact same instance, which means we set a new variable.
+                // In this case, we will try removing the pipeline variable in the end.
+                _shouldRemovePipelineVariable = true;
+            }
+            else
+            {
+                // A variable with the same name already exists in the same scope and it was returned.
+                // In this case, we update the reference and don't remove the variable in the end.
+                _pipelineVarReference = (PSVariable)varToUse;
+            }
 
             if (_thisCommand is not PSScriptCmdlet)
             {
                 this.OutputPipe.SetPipelineVariable(_pipelineVarReference);
+            }
+        }
+
+        internal void RemovePipelineVariable()
+        {
+            if (_shouldRemovePipelineVariable)
+            {
+                // Remove pipeline variable when a pipeline is being torn down.
+                _state.PSVariable.Remove(PipelineVariable);
             }
         }
 
@@ -1064,7 +1082,7 @@ namespace System.Management.Automation
         /// </remarks>
         /// <example>
         ///     <code>
-        ///         namespace Microsoft.Samples.MSH.Cmdlet
+        ///         namespace Microsoft.Samples.Cmdlet
         ///         {
         ///             [Cmdlet(VerbsCommon.Remove,"myobjecttype1")]
         ///             public class RemoveMyObjectType1 : PSCmdlet
@@ -1158,7 +1176,7 @@ namespace System.Management.Automation
         /// </remarks>
         /// <example>
         ///     <code>
-        ///         namespace Microsoft.Samples.MSH.Cmdlet
+        ///         namespace Microsoft.Samples.Cmdlet
         ///         {
         ///             [Cmdlet(VerbsCommon.Remove,"myobjecttype2")]
         ///             public class RemoveMyObjectType2 : PSCmdlet
@@ -1261,7 +1279,7 @@ namespace System.Management.Automation
         /// </remarks>
         /// <example>
         ///     <code>
-        ///         namespace Microsoft.Samples.MSH.Cmdlet
+        ///         namespace Microsoft.Samples.Cmdlet
         ///         {
         ///             [Cmdlet(VerbsCommon.Remove,"myobjecttype3")]
         ///             public class RemoveMyObjectType3 : PSCmdlet
@@ -1277,8 +1295,8 @@ namespace System.Management.Automation
         ///                 public override void ProcessRecord()
         ///                 {
         ///                     if (ShouldProcess(
-        ///                         string.Format("Deleting file {0}",filename),
-        ///                         string.Format("Are you sure you want to delete file {0}?", filename),
+        ///                         string.Format($"Deleting file {filename}"),
+        ///                         string.Format($"Are you sure you want to delete file {filename}?"),
         ///                         "Delete file"))
         ///                     {
         ///                         // delete the object
@@ -1376,7 +1394,7 @@ namespace System.Management.Automation
         /// </remarks>
         /// <example>
         ///     <code>
-        ///         namespace Microsoft.Samples.MSH.Cmdlet
+        ///         namespace Microsoft.Samples.Cmdlet
         ///         {
         ///             [Cmdlet(VerbsCommon.Remove,"myobjecttype3")]
         ///             public class RemoveMyObjectType3 : PSCmdlet
@@ -1393,8 +1411,8 @@ namespace System.Management.Automation
         ///                 {
         ///                     ShouldProcessReason shouldProcessReason;
         ///                     if (ShouldProcess(
-        ///                         string.Format("Deleting file {0}",filename),
-        ///                         string.Format("Are you sure you want to delete file {0}?", filename),
+        ///                         string.Format($"Deleting file {filename}"),
+        ///                         string.Format($"Are you sure you want to delete file {filename}?"),
         ///                         "Delete file",
         ///                         out shouldProcessReason))
         ///                     {
@@ -1465,7 +1483,7 @@ namespace System.Management.Automation
         /// <see cref="System.Management.Automation.ShouldProcessReason"/>
         /// are returned.
         /// </param>
-        /// <remarks>true iff the action should be performed</remarks>
+        /// <remarks>true if-and-only-if the action should be performed</remarks>
         /// <exception cref="System.Management.Automation.PipelineStoppedException">
         /// The pipeline has already been terminated, or was terminated
         /// during the execution of this method.
@@ -1682,7 +1700,7 @@ namespace System.Management.Automation
         /// </remarks>
         /// <example>
         ///     <code>
-        ///         namespace Microsoft.Samples.MSH.Cmdlet
+        ///         namespace Microsoft.Samples.Cmdlet
         ///         {
         ///             [Cmdlet(VerbsCommon.Remove,"myobjecttype4")]
         ///             public class RemoveMyObjectType4 : PSCmdlet
@@ -1706,14 +1724,14 @@ namespace System.Management.Automation
         ///                 public override void ProcessRecord()
         ///                 {
         ///                     if (ShouldProcess(
-        ///                         string.Format("Deleting file {0}",filename),
-        ///                         string.Format("Are you sure you want to delete file {0}", filename),
+        ///                         string.Format($"Deleting file {filename}"),
+        ///                         string.Format($"Are you sure you want to delete file {filename}"),
         ///                         "Delete file"))
         ///                     {
         ///                         if (IsReadOnly(filename))
         ///                         {
         ///                             if (!Force &amp;&amp; !ShouldContinue(
-        ///                                     string.Format("File {0} is read-only.  Are you sure you want to delete read-only file {0}?", filename),
+        ///                                     string.Format($"File {filename} is read-only.  Are you sure you want to delete read-only file {filename}?"),
         ///                                     "Delete file"))
         ///                                     )
         ///                             {
@@ -1765,11 +1783,11 @@ namespace System.Management.Automation
         /// the default option selected in the selection menu is 'No'.
         /// </param>
         /// <param name="yesToAll">
-        /// true iff user selects YesToAll.  If this is already true,
+        /// true if-and-only-if user selects YesToAll.  If this is already true,
         /// ShouldContinue will bypass the prompt and return true.
         /// </param>
         /// <param name="noToAll">
-        /// true iff user selects NoToAll.  If this is already true,
+        /// true if-and-only-if user selects NoToAll.  If this is already true,
         /// ShouldContinue will bypass the prompt and return false.
         /// </param>
         /// <exception cref="System.Management.Automation.PipelineStoppedException">
@@ -1812,11 +1830,11 @@ namespace System.Management.Automation
         /// It may be displayed by some hosts, but not all.
         /// </param>
         /// <param name="yesToAll">
-        /// true iff user selects YesToAll.  If this is already true,
+        /// true if-and-only-if user selects YesToAll.  If this is already true,
         /// ShouldContinue will bypass the prompt and return true.
         /// </param>
         /// <param name="noToAll">
-        /// true iff user selects NoToAll.  If this is already true,
+        /// true if-and-only-if user selects NoToAll.  If this is already true,
         /// ShouldContinue will bypass the prompt and return false.
         /// </param>
         /// <exception cref="System.Management.Automation.PipelineStoppedException">
@@ -1864,7 +1882,7 @@ namespace System.Management.Automation
         /// </remarks>
         /// <example>
         ///     <code>
-        ///         namespace Microsoft.Samples.MSH.Cmdlet
+        ///         namespace Microsoft.Samples.Cmdlet
         ///         {
         ///             [Cmdlet(VerbsCommon.Remove,"myobjecttype4")]
         ///             public class RemoveMyObjectType5 : PSCmdlet
@@ -1891,14 +1909,14 @@ namespace System.Management.Automation
         ///                 public override void ProcessRecord()
         ///                 {
         ///                     if (ShouldProcess(
-        ///                         string.Format("Deleting file {0}",filename),
-        ///                         string.Format("Are you sure you want to delete file {0}", filename),
+        ///                         string.Format($"Deleting file {filename}"),
+        ///                         string.Format($"Are you sure you want to delete file {filename}"),
         ///                         "Delete file"))
         ///                     {
         ///                         if (IsReadOnly(filename))
         ///                         {
         ///                             if (!Force &amp;&amp; !ShouldContinue(
-        ///                                     string.Format("File {0} is read-only.  Are you sure you want to delete read-only file {0}?", filename),
+        ///                                     string.Format($"File {filename} is read-only.  Are you sure you want to delete read-only file {filename}?"),
         ///                                     "Delete file"),
         ///                                     ref yesToAll,
         ///                                     ref noToAll
@@ -2377,10 +2395,7 @@ namespace System.Management.Automation
             if (e == null)
                 throw PSTraceSource.NewArgumentNullException(nameof(e));
 
-            if (PipelineProcessor != null)
-            {
-                PipelineProcessor.RecordFailure(e, _thisCommand);
-            }
+            PipelineProcessor?.RecordFailure(e, _thisCommand);
 
             // 1021203-2005/05/09-JonN
             // HaltCommandException will cause the command
@@ -2404,7 +2419,6 @@ namespace System.Management.Automation
                 }
 
                 // Log a command health event
-
                 MshLog.LogCommandHealthEvent(
                     Context,
                     e,
@@ -2543,8 +2557,7 @@ namespace System.Management.Automation
 
             EnsureVariableParameterAllowed();
 
-            if (_state == null)
-                _state = new SessionState(Context.EngineSessionState);
+            _state ??= new SessionState(Context.EngineSessionState);
 
             if (variableName.StartsWith('+'))
             {
@@ -3213,7 +3226,7 @@ namespace System.Management.Automation
         private bool _debugFlag = false;
 
         /// <summary>
-        /// Debug tell the command system to provide Programmer/Support type messages to understand what is really occuring
+        /// Debug tell the command system to provide Programmer/Support type messages to understand what is really occurring
         /// and give the user the opportunity to stop or debug the situation.
         /// </summary>
         /// <remarks>
@@ -3317,7 +3330,7 @@ namespace System.Management.Automation
         {
             get
             {
-                if (_isProgressPreferenceSet)
+                if (IsProgressActionSet)
                     return _progressPreference;
 
                 if (!_isProgressPreferenceCached)
@@ -3338,12 +3351,14 @@ namespace System.Management.Automation
                 }
 
                 _progressPreference = value;
-                _isProgressPreferenceSet = true;
+                IsProgressActionSet = true;
             }
         }
 
         private ActionPreference _progressPreference = InitialSessionState.DefaultProgressPreference;
-        private bool _isProgressPreferenceSet = false;
+
+        internal bool IsProgressActionSet { get; private set; } = false;
+
         private bool _isProgressPreferenceCached = false;
 
         /// <summary>
@@ -3743,8 +3758,10 @@ namespace System.Management.Automation
         {
             Diagnostics.Assert(_thisCommand is PSScriptCmdlet, "this is only done for script cmdlets");
 
-            if (_outVarList != null)
+            if (_outVarList != null && !OutputPipe.IgnoreOutVariableList)
             {
+                // A null pipe is used when executing the 'Clean' block of a PSScriptCmdlet.
+                // In such a case, we don't capture output to the out variable list.
                 this.OutputPipe.AddVariableList(VariableStreamKind.Output, _outVarList);
             }
 
@@ -3765,26 +3782,13 @@ namespace System.Management.Automation
 
             if (this.PipelineVariable != null)
             {
-                // _state can be null if the current script block is dynamicparam, etc.
-                if (_state != null)
-                {
-                    // Create the pipeline variable
-                    _state.PSVariable.Set(_pipelineVarReference);
-
-                    // Get the reference again in case we re-used one from the
-                    // same scope.
-                    _pipelineVarReference = _state.PSVariable.Get(this.PipelineVariable);
-                }
-
                 this.OutputPipe.SetPipelineVariable(_pipelineVarReference);
             }
         }
 
         internal void RemoveVariableListsInPipe()
         {
-            // Diagnostics.Assert(thisCommand is PSScriptCmdlet, "this is only done for script cmdlets");
-
-            if (_outVarList != null)
+            if (_outVarList != null && !OutputPipe.IgnoreOutVariableList)
             {
                 this.OutputPipe.RemoveVariableList(VariableStreamKind.Output, _outVarList);
             }
@@ -3807,9 +3811,6 @@ namespace System.Management.Automation
             if (this.PipelineVariable != null)
             {
                 this.OutputPipe.RemovePipelineVariable();
-                // '_state' could be null when a 'DynamicParam' block runs because the 'DynamicParam' block runs in 'DoPrepare',
-                // before 'PipelineProcessor.SetupParameterVariables' is called, where '_state' is initialized.
-                _state?.PSVariable.Remove(this.PipelineVariable);
             }
         }
     }
